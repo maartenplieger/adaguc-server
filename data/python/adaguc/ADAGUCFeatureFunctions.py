@@ -9,7 +9,7 @@ from sets import Set
 import logging
 import ADAGUCWCS
 from netCDF4 import num2date 
-
+#logging.basicConfig(level=logging.DEBUG)
 def defaultCallback(message,percentage):
   print "defaultCallback:: "+message+" "+str(percentage)
 
@@ -20,7 +20,7 @@ def printfield(featuredata):
       mstr = "%s%0.2d" %(mstr, (featuredata[y][x]))
     print mstr
 
-def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",variable = None, time= None,width=300,height=300,crs="EPSG:4326",outncfile="/tmp/stat.nc",outcsvfile="/tmp/stat.csv",callback=defaultCallback, tmpFolderPath = "/tmp", homeFolderPath="/tmp"):
+def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",variable = None, time= None,width=300,height=300,crs="EPSG:4326",outncfile="/tmp/stat.nc",outcsvfile="/tmp/stat.csv",callback=defaultCallback, tmpFolderPath = "/tmp", homeFolderPath="/tmp", featureIDName = "features_NUTS_ID", featureIDTitle = "features_NAME_ASCI", env=None):
 
   os.chdir(homeFolderPath)
   
@@ -45,7 +45,8 @@ def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",vari
     OUTFILE=tmpFolderPath+"/features.nc",
     FORMAT="netcdf",
     LOGFILE=tmpFolderPath+"/adagucerrlogfeatures.txt",
-    CALLBACK=featureCallBack)
+    CALLBACK=featureCallBack,
+    env=env)
 
   status = ADAGUCWCS.iteratewcs(
     TIME=time,
@@ -59,7 +60,8 @@ def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",vari
     OUTFILE=tmpFolderPath+"/data.nc",
     FORMAT="netcdf",
     LOGFILE=tmpFolderPath+"/adagucerrlogfeatures.txt",
-    CALLBACK=dataCallBack)
+    CALLBACK=dataCallBack,
+    env=env)
         
   callback("Starting feature overlay",75);        
   statistic_names={"mean":"Average",
@@ -74,19 +76,22 @@ def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",vari
   nutsidvar = None
   nutsascivar = None
   try:
-    nutsidvar = nc_features.variables["features_NUTS_ID"]
+    logging.debug("Getting featureIDName variable with name [%s]" % featureIDName);
+    nutsidvar = nc_features.variables[featureIDName]
   except:
+    logging.warning("featureIDName with id [%s] not found" % featureIDName)
     pass
   try:
-    nutsascivar = nc_features.variables["features_NAME_ASCI"]
+    nutsascivar = nc_features.variables[featureIDTitle]
   except:
+    logging.warning("featureIDTitle with id [%s] not found" % featureIDTitle)
     pass
   featurevar = nc_features.variables["features"]
 
   varstodo=[];
   nc_data = netCDF4.Dataset( tmpFolderPath+"/data.nc",'r')
   for v in nc_data.variables:
-    if len(nc_data.variables[v].dimensions)>2:
+    if len(nc_data.variables[v].dimensions)>=2:
       if v!="x" and v!="y" and v!="lon" and v!="lat":
         varstodo.append(v)
 
@@ -107,7 +112,7 @@ def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",vari
       try: 
         outVar = ncvar
       except:
-        logging.debug("Data for variable "+str(var_name)+" could not be written")
+        logging.warning("Data for variable "+str(var_name)+" could not be written")
         pass
       pass
     """ When a 2D+ var hasbeen found, copy its name and create vars for all statistics we want to calculate """
@@ -150,9 +155,11 @@ def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",vari
   CSV="time;variable;index;id;name;numsamples;min;mean;max;std;\n"
 
   numVariables = len(varstodo)
+  logging.debug("numVariables = [%d]" % numVariables);
   numVariablesDone = -1;
   """ Iterate over all variables """
   for currentVarName in varstodo:
+    logging.debug("currentVarName = [%s]" % currentVarName);
     numVariablesDone = numVariablesDone + 1
     nodatavalue= featurevar._FillValue
     invar_datain = nc_data.variables[currentVarName]
@@ -164,25 +171,47 @@ def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",vari
     
     """ Iterate over all timesteps """
     timeValue = "None"
-    timeVar = nc_data.variables["time"]
-    calendarAttr = "standard"
+    timeVar = None
     try:
-        calendarAttr=timeVar.calendar
+      timeVar = nc_data.variables["time"]
     except:
-        pass
+      pass
+
+    calendarAttr = "standard"
+    numTimeSteps = 1
+    if timeVar != None:
+      try:
+          calendarAttr=timeVar.calendar
+      except:
+          pass
+      numTimeSteps = numpy.shape(timeVar)[0]
     
-    numTimeSteps = numpy.shape(timeVar)[0]
+      
+    logging.debug("numTimeSteps = [%d]" % numTimeSteps);
     for currentStep in range(0,numTimeSteps):
       """ Read time value """
-      timeValueDouble = timeVar[currentStep]
-      timeValue = num2date(timeValueDouble, units=timeVar.units,calendar=calendarAttr).isoformat()#strftime("%Y %M %D %h %m %S")
-      """ Read data from netCDF Variables """
-      datainflat = invar_datain[currentStep]
-      dataout_minflat = outvar_min[currentStep]
-      dataout_meanflat = outvar_mean[currentStep]
-      dataout_maxflat = outvar_max[currentStep]
-      dataout_stdflat = outvar_std[currentStep]
-      dataout_maskflat = outvar_mask[currentStep]
+      if timeVar != None:
+        timeValueDouble = timeVar[currentStep]
+        timeValue = num2date(timeValueDouble, units=timeVar.units,calendar=calendarAttr).isoformat()#strftime("%Y %M %D %h %m %S")
+        """ Read data from netCDF Variables """
+        datainflat = invar_datain[currentStep]
+        dataout_minflat = outvar_min[currentStep]
+        dataout_meanflat = outvar_mean[currentStep]
+        dataout_maxflat = outvar_max[currentStep]
+        dataout_stdflat = outvar_std[currentStep]
+        dataout_maskflat = outvar_mask[currentStep]
+      else:
+        timeValueDouble = None
+        timeValue = "None"
+
+        """ Read data from netCDF Variables """
+        datainflat = invar_datain[:]
+        dataout_minflat = outvar_min[:]
+        dataout_meanflat = outvar_mean[:]
+        dataout_maxflat = outvar_max[:]
+        dataout_stdflat = outvar_std[:]
+        dataout_maskflat = outvar_mask[:]
+        
       totalmean = numpy.nanmean(datainflat)
       foundregionindexes=numpy.unique(featureindexdata)
       numRegionsDone = -1
@@ -197,23 +226,29 @@ def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",vari
           fracRegionTimeVarsDone = fracVarsDone + (fracRegionTimeDone/float(numVariables))
           callback("For var %s and time (%d/%d) working on feature index nr %d (%d/%d)" %(currentVarName,currentStep,numTimeSteps,regionindex,numRegionsDone,numRegionIndexes),(fracRegionTimeVarsDone)*24.+75.);  
         
+        
         if not regionindex is numpy.ma.masked and nodatavalue != regionindex:
           indices = numpy.where(featureindexdata==regionindex)
           selecteddata=datainflat[indices]
-          
           allmask = False
+          
           try:
             if selecteddata.mask.all() == True:
               allmask = True
           except:
             pass
             
+          
           if allmask == False:
             try: 
               minval =  numpy.nanmin(selecteddata)
+              
               meanval=  numpy.nanmean(selecteddata)
+              
               maxval =  numpy.nanmax(selecteddata)
+              
               stdval =  numpy.nanstd(selecteddata)
+              
               dataout_minflat[indices]=minval
               dataout_meanflat[indices]=meanval
               dataout_maxflat[indices]=maxval
@@ -227,15 +262,22 @@ def ADAGUCFeatureCombineNuts( featureNCFile,dataNCFile,bbox= "-40,20,60,85",vari
                 reglongname = nutsascidata[regionindex]
               CSV += timeValue+";"+str(currentVarName)+";"+str(regionindex)+";"+str(regid)+";"+str(reglongname)+";"+str(len(selecteddata))+";"+str(minval)+";"+str(meanval)+";"+str(maxval)+";"+str(stdval)+"\n"
             except ValueError: 
-              logging.debug('Masks all around!')
+              logging.warning('Masks all around!')
               pass 
           
       """ Assign each timestep to NetCDF variables """
-      outvar_min[currentStep]=dataout_minflat;
-      outvar_mean[currentStep]=dataout_meanflat;
-      outvar_max[currentStep]=dataout_maxflat;
-      outvar_std[currentStep]=dataout_stdflat;
-      outvar_mask[currentStep]=dataout_maskflat;
+      if timeVar != None:
+        outvar_min[currentStep]=dataout_minflat;
+        outvar_mean[currentStep]=dataout_meanflat;
+        outvar_max[currentStep]=dataout_maxflat;
+        outvar_std[currentStep]=dataout_stdflat;
+        outvar_mask[currentStep]=dataout_maskflat;
+      else:
+        outvar_min[:]=dataout_minflat;
+        outvar_mean[:]=dataout_meanflat;
+        outvar_max[:]=dataout_maxflat;
+        outvar_std[:]=dataout_stdflat;
+        outvar_mask[:]=dataout_maskflat;
   
   callback("Writing data",99);  
   nc_out.close()  

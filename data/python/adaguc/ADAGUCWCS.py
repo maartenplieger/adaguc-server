@@ -155,14 +155,17 @@ def defaultCallback(message,percentage):
 """
 This requires a working ADAGUC server in the PATH environment, ADAGUC_CONFIG environment variable must point to ADAGUC's config file.
 """
-def iteratewcs(TIME = "",BBOX = "-180,-90,180,90",CRS = "EPSG:4326",RESX=None,RESY=None,WIDTH=None, HEIGHT= None,WCSURL="",TMP=".",COVERAGE="pr",LOGFILE=None,OUTFILE="out.nc",FORMAT="netcdf",CALLBACK=defaultCallback):
-  maxRequestsAtOnce = 50
-  adagucenv=os.environ.copy()
+def iteratewcs(TIME = "",BBOX = "-180,-90,180,90",CRS = "EPSG:4326",RESX=None,RESY=None,WIDTH=None, HEIGHT= None,WCSURL="",TMP=".",COVERAGE="pr",LOGFILE=None,OUTFILE="out.nc",FORMAT="netcdf",CALLBACK=defaultCallback, env = None):
+  maxRequestsAtOnce = 30
+  adagucenv=env
+  if env == None:
+    adagucenv=os.environ.copy()
   #adagucenv.update(env)
   ADAGUC_PATH = adagucenv['ADAGUC_PATH']
   adagucenv.update({'ADAGUC_CONFIG': ADAGUC_PATH + '/data/config/adaguc.autoresource.xml'});
   adagucenv.update({'ADAGUC_TMP': TMP});
   adagucexecutable = ADAGUC_PATH+"/bin/adagucserver";
+  adaguctimeaggregator = ADAGUC_PATH+"/bin/aggregate_time";
   """ Check if adagucserver is in the path """
   if(which(adagucexecutable) == None):
     raise ValueError("ADAGUC Executable '"+adagucexecutable+"' not found in PATH");
@@ -226,16 +229,20 @@ def iteratewcs(TIME = "",BBOX = "-180,-90,180,90",CRS = "EPSG:4326",RESX=None,RE
     
     logging.debug("WCS GetCoverage URL: "+str(url));
     
+    #print single_date
+    
     for j in range(0,len(single_date)):
       wcsdate = single_date[j]
+      
       if wcsdate != "*":
         if(j>0):
           wcstime=wcstime + ","
-        wcstime=wcstime + time.strftime("%Y-%m-%dT%H:%M:%SZ", wcsdate.timetuple())
+        wcstime=wcstime + urllib.quote_plus(time.strftime("%Y-%m-%dT%H:%M:%SZ", wcsdate.timetuple()))
         filetime=time.strftime("%Y%m%dT%H%M%SZ", single_date[0].timetuple()) + '-'  + time.strftime("%Y%m%dT%H%M%SZ", single_date[-1].timetuple())
         messagetime=time.strftime("%Y%m%dT%H%M%SZ", single_date[0].timetuple()) 
-        url = url + "TIME="+urllib.quote_plus(wcstime)+"&";
-        
+    url = url + "TIME="+wcstime+"&";
+    
+    #print url
         
     url = url + "BBOX="+BBOX+"&";
     if RESX != None:
@@ -312,7 +319,7 @@ def iteratewcs(TIME = "",BBOX = "-180,-90,180,90",CRS = "EPSG:4326",RESX=None,RE
       cleanlog(tmpdir);
       dolog(tmpdir,tmpdir)
       dolog(tmpdir,OUTFILE)
-      cmds=['aggregate_time',tmpdir,OUTFILE]
+      cmds=[adaguctimeaggregator,tmpdir,OUTFILE]
       dolog(tmpdir,cmds)
       status = CGIRunner.CGIRunner().startProcess(cmds,monitor2)
       

@@ -12,7 +12,7 @@ testsuites=[];
 #testsuites.append(unittest.TestLoader().loadTestsFromTestCase(TestWMSDocumentCache))
 #testsuites.append(unittest.TestLoader().loadTestsFromTestCase(TestOpenDAPServer))
 #testsuites.append(unittest.TestLoader().loadTestsFromTestCase(TestWMSPolylineRenderer))
-##testsuites.append(unittest.TestLoader().loadTestsFromTestCase(TestWMSTiling))
+#testsuites.append(unittest.TestLoader().loadTestsFromTestCase(TestWMSTiling))
 testsuites.append(unittest.TestLoader().loadTestsFromTestCase(TestADAGUCFeatureFunctions))
 result=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite(testsuites))
 

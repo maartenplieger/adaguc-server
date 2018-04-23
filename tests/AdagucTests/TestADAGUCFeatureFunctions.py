@@ -24,8 +24,9 @@ class TestADAGUCFeatureFunctions(unittest.TestCase):
         filenamenc="test_ADAGUCFeatureFunctions_testdata.nc"
         filenamecsv="test_ADAGUCFeatureFunctions_testdata.csv"
        
-        print "Writing to " +self.testresultspath + filenamenc
-       
+        def testcallback(message,percentage):
+          return
+        
         ADAGUCFeatureCombineNuts(
             featureNCFile = "countries.geojson",
             dataNCFile = "testdata.nc",
@@ -36,10 +37,11 @@ class TestADAGUCFeatureFunctions(unittest.TestCase):
             height=80,
             outncfile=os.getcwd() + "/"+ self.testresultspath + filenamenc,
             outcsvfile=os.getcwd() + "/"+ self.testresultspath + filenamecsv, 
-            tmpFolderPath="/tmp")
-        # AdagucTestTools().writetofile(self.testresultspath + filename,data.getvalue())
-        self.assertEqual( 
-            AdagucTestTools().readfromfile(self.testresultspath + filenamenc), AdagucTestTools().readfromfile(self.expectedoutputsspath + filenamenc))
+            featureIDName="features_adm0_a3",
+            featureIDTitle="features_admin",
+            tmpFolderPath="/tmp",
+            callback=testcallback)
+        
         self.assertEqual( 
             AdagucTestTools().readfromfile(self.testresultspath + filenamecsv), AdagucTestTools().readfromfile(self.expectedoutputsspath + filenamecsv))
 
