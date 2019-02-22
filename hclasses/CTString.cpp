@@ -658,8 +658,11 @@ namespace CT{
   
   bool string::isFloat() {
     double a = this->toDouble();
-    CT::string s;s.print("%g",a);
-    // printf("%s == %s", s.c_str(), this->c_str());
+    CT::string s;
+    if (this->indexOf(".")!=-1) {return true;}
+    s.print("%g",a);
+    //if (s.indexOf(".")==-1) s.concat(".0");
+    // printf("[%s] == [%s]\n", s.c_str(), this->c_str());
     return (s.equals(this));
   }
 }

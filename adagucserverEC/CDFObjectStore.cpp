@@ -36,7 +36,7 @@ const char *CDFObjectStore::className="CDFObjectStore";
 #include "CConvertTROPOMI.h"
 #include "CDataReader.h"
 #include "CCDFCSVReader.h"
-//#define CDFOBJECTSTORE_DEBUG
+#define CDFOBJECTSTORE_DEBUG
 #define MAX_OPEN_FILES 500
 extern CDFObjectStore cdfObjectStore;
 CDFObjectStore cdfObjectStore;
@@ -152,14 +152,11 @@ CDFReader *CDFObjectStore::getCDFReader(const char *fileName){
         }
       }
       if(cdfReader==NULL){
-        a=name.indexOf(".geojson");
-        if(a!=-1){
-          if(a==int(name.length())-8){
-            if(EXTRACT_HDF_NC_VERBOSE){
-              CDBDebug("Creating GeoJSON reader");
-            }
-            cdfReader = new CDFGeoJSONReader();
+        if(name.endsWith(".geojson")){
+          if(EXTRACT_HDF_NC_VERBOSE){
+            CDBDebug("Creating GeoJSON reader");
           }
+          cdfReader = new CDFGeoJSONReader();
         }
       }
       if(cdfReader==NULL){
