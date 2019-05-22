@@ -36,7 +36,7 @@ const char *CDFObjectStore::className="CDFObjectStore";
 #include "CConvertTROPOMI.h"
 #include "CDataReader.h"
 #include "CCDFCSVReader.h"
-#define CDFOBJECTSTORE_DEBUG
+//#define CDFOBJECTSTORE_DEBUG
 #define MAX_OPEN_FILES 500
 extern CDFObjectStore cdfObjectStore;
 CDFObjectStore cdfObjectStore;
