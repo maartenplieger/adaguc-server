@@ -244,6 +244,7 @@ int CServerParams::makeUniqueLayerName(CT::string *layerName,CServerConfig::XMLE
   if(!cfgLayer->Name[0]->attr.force.equals("true")){
     layerName->concat(cfgLayer->Name[0]->value.c_str());
     //layerName->replaceSelf(".","_");//TODO CHECK WHY?
+    layerName->replaceSelf(" ", "_");
   }else{
     layerName->copy(cfgLayer->Name[0]->value.c_str());
   }
@@ -564,6 +565,9 @@ int CServerParams::parseConfigFile(CT::string &pszConfigFile){
     }
     const char *pszADAGUC_TMP=getenv("ADAGUC_TMP");
     if(pszADAGUC_TMP!=NULL)configFileData.replaceSelf("{ADAGUC_TMP}",pszADAGUC_TMP);
+    
+    const char *pszADAGUC_DB=getenv("ADAGUC_DB");
+    if(pszADAGUC_DB!=NULL)configFileData.replaceSelf("{ADAGUC_DB}",pszADAGUC_DB);
   }catch(int e){
   }
   
